@@ -10,7 +10,7 @@
 
     /* ───────── 1. CONFIGURACIÓN (único lugar para cambiar datos del cliente) ───────── */
     const CONFIG = {
-        whatsapp: '527714054500',   // 52 + número a 10 dígitos, sin signos
+        whatsapp: '529984027507',   // 52 + número a 10 dígitos, sin signos
         brand: 'MOBA-INOX'
     };
 
@@ -592,6 +592,7 @@
             ScrollTrigger.create({
                 trigger: item, start: 'top 94%', once: true,
                 onEnter: () => {
+                    if (item.dataset.in) return;            // el filtro ya la mostró
                     tweenInset(item, [100, 0, 0, 0, 20], [0, 0, 0, 0, 20], { duration: 1.4, ease: 'expo.out', onComplete: () => { item.style.clipPath = ''; } });
                     gsap.to(img, { scale: 1, duration: 1.8, ease: 'expo.out', clearProps: 'transform' });
                 }
@@ -641,7 +642,7 @@
         if (!dlg || typeof dlg.showModal !== 'function') return;
         const imgEl = $('#lb-img');
         const capEl = $('#lb-cap');
-        const tiles = $$('.g-btn');
+        let tiles = $$('.g-btn');
         let index = 0;
 
         const setImage = (i) => {
@@ -687,7 +688,10 @@
             if (motion) gsap.fromTo(imgEl, { opacity: 0, x: 50 * dir }, { opacity: 1, x: 0, duration: 0.7, ease: 'expo.out', clearProps: 'transform' });
         };
 
-        tiles.forEach((tile, i) => tile.addEventListener('click', () => open(i)));
+        tiles.forEach((tile) => tile.addEventListener('click', () => {
+            tiles = $$('.g-item:not([hidden]) .g-btn');      // el visor recorre solo las fotos del filtro activo
+            open(tiles.indexOf(tile));
+        }));
         $('#lb-close').addEventListener('click', close);
         $('#lb-prev').addEventListener('click', () => step(-1));
         $('#lb-next').addEventListener('click', () => step(1));
@@ -698,6 +702,42 @@
             if (e.key === 'ArrowLeft') step(-1);
             if (e.key === 'ArrowRight') step(1);
         });
+    }
+
+    /* ───────── 13b. GALERÍA: FILTRO POR CATEGORÍA ───────── */
+    function initGalleryFilter() {
+        const bar = $('#g-filters');
+        const grid = $('#g-grid');
+        if (!bar || !grid) return;
+        const chips = $$('[data-filter]', bar);
+        const items = $$('.g-item', grid);
+        const status = $('#g-status');
+
+        const apply = (chip) => {
+            const cat = chip.dataset.filter;
+            chips.forEach((c) => {
+                const on = c === chip;
+                c.classList.toggle('is-active', on);
+                c.setAttribute('aria-pressed', String(on));
+            });
+            grid.classList.toggle('is-filtered', cat !== 'all');
+
+            const shown = items.filter((it) => {
+                const show = cat === 'all' || it.dataset.cat === cat;
+                it.hidden = !show;
+                return show;
+            });
+            // lo que se muestra ya no espera la máscara de revelado por scroll
+            shown.forEach((it) => { it.dataset.in = '1'; it.style.clipPath = ''; });
+            if (hasGsap) gsap.set(shown.map((it) => $('img', it)), { clearProps: 'transform' });
+            if (motion) {
+                gsap.fromTo(shown, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.9, stagger: 0.03, ease: 'expo.out', clearProps: 'opacity,transform', overwrite: 'auto' });
+            }
+            if (status) status.textContent = `Mostrando ${shown.length} fotos: ${chip.textContent.trim()}.`;
+            if (hasGsap) ScrollTrigger.refresh();
+        };
+
+        chips.forEach((chip) => chip.addEventListener('click', () => apply(chip)));
     }
 
     /* ───────── 14. PESTAÑAS (misión, visión, valores) ───────── */
@@ -819,6 +859,7 @@
     initMarquee();
     initPointerEffects();
     initLightbox();
+    initGalleryFilter();
     initTabs();
     initForm();
 
